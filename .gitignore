@@ -28,3 +28,7 @@ dist-ssr
 __pycache__/
 *.pyc
 .venv/
+
+# uagents-generated key material — NEVER commit
+private_keys.json
+*.private_keys.json

@@ -16,6 +16,7 @@
 # To run locally instead: add  mailbox=True  to the Agent(...) call below and
 # run `python hosted_agent.py`, then connect it via the printed inspector link.
 # =============================================================================
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -178,9 +179,13 @@ def analyse(request):
     return "\n".join(lines)
 
 
+# The seed IS the agent's private key — never hardcode it. On Agentverse Hosted
+# Agents you can omit it entirely (the platform assigns and persists a secure
+# identity). For a stable address elsewhere, set the LSN_AGENT_SEED env var /
+# secret to a random value, e.g. `python -c "import secrets;print(secrets.token_hex(32))"`.
 agent = Agent(
     name="legacy-safety-net",
-    seed="legacy-safety-net-asi-one-agent-seed-keep-stable",
+    seed=os.environ.get("LSN_AGENT_SEED"),
 )
 
 chat = Protocol(spec=chat_protocol_spec)

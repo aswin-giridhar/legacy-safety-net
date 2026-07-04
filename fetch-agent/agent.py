@@ -11,6 +11,7 @@ Run:
 Then connect the printed Agent Address on Agentverse (Mailbox) to publish it to
 ASI:One. See README.md.
 """
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -27,9 +28,13 @@ import engine
 DEMO_URL = "https://legacy-safety-net.vercel.app"
 REPO = engine.parse()
 
+# The seed IS the agent's private key — never hardcode/commit it. Set the
+# LSN_AGENT_SEED env var to a random value for a stable address, e.g.
+#   export LSN_AGENT_SEED="$(python -c 'import secrets;print(secrets.token_hex(32))')"
+# If unset, uagents generates an ephemeral identity for local testing.
 agent = Agent(
     name="legacy-safety-net",
-    seed="legacy-safety-net-asi-one-agent-seed-change-me",
+    seed=os.environ.get("LSN_AGENT_SEED"),
     port=8001,
     mailbox=True,
 )

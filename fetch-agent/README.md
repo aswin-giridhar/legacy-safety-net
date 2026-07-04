@@ -26,8 +26,13 @@ during judging. Instead, host it on Agentverse's infra with the single self-cont
 
 ```bash
 pip install -r requirements.txt
+# optional: a stable address across restarts (the seed is a private key — keep it secret)
+export LSN_AGENT_SEED="$(python -c 'import secrets;print(secrets.token_hex(32))')"
 python agent.py            # prints its address; connect it via the inspector link
 ```
+
+The agent's `seed` is loaded from `LSN_AGENT_SEED` (never committed). On Agentverse
+Hosted Agents you can leave it unset — the platform assigns and persists a secure identity.
 
 `agent.py` starts with a mailbox so it can receive ASI:One messages without a public IP —
 but it must stay running, and the Agentverse inspector must reach it on your own localhost.
