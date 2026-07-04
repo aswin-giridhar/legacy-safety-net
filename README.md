@@ -2,11 +2,14 @@
 
 **Change decades-old code without breaking it.** Point it at a legacy module and get a
 plain-English spec, a live dependency / blast-radius map, and characterization tests that
-pin its current behaviour — so an engineer can finally change it safely.
+pin its current behaviour — then *watch a proposed change turn a test red before you ship it*.
 
 Built for the **Conduct "Make Legacy Move"** track — UK AI Agent Hackathon EP5.
 
-![blast radius](docs/screenshots/lsn-main.png)
+- **Live app:** https://legacy-safety-net.vercel.app
+- **ASI:One agent (Fetch.ai):** `agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa` (see [`fetch-agent/`](fetch-agent/))
+
+![simulate a change → a test fails](docs/screenshots/lsn-simulate.png)
 
 ---
 
@@ -27,14 +30,29 @@ Given a plain-English change request (e.g. *"add a 15% VAT tier"*), Legacy Safet
    including the business constants a change is likely to touch (e.g. the VAT rate literal).
 4. **Protects** it — generates golden-master *characterization tests* that lock in today's
    behaviour, so a change that alters it fails loudly instead of shipping silently.
-5. **Keeps the human in control** — nothing auto-applies; the engineer reviews and approves.
+5. **Keeps the human in control** — nothing auto-applies; the engineer reviews and approves,
+   and every approval is logged to an audit trail.
+
+## Interactive features
+
+| Feature | What it does |
+|---|---|
+| **Simulate a change** | Drag the target's constant (e.g. the VAT rate); each test re-evaluates live as **PASS / FAIL / STALE**. This is *"the six-month bug, caught in one click."* |
+| **Export tests** | Download the characterization tests as Gherkin `.feature`, a JSON golden-master, or a **runnable pytest** (the computable cases actually execute). |
+| **Export change plan** | One-click Markdown change plan: blast radius, risk register, ordered execution steps, and a sign-off block. |
+| **Provenance peek** | Click any citation → view the exact `.cbl` source lines, with the referenced line highlighted. Grounded, not hallucinated. |
+| **Audit log** | Each approval is logged with a content hash and timestamp (localStorage-persisted), exportable as a traceability record. |
+| **Upload your own COBOL** | Drag in `.cbl` / `.cpy` files → the app parses them live and swaps in your own repo. All in the browser — nothing is uploaded. |
+| **AI enhancement (optional)** | Paste an Anthropic key to enrich the spec prose and fuzzier request→program matching; falls back to the deterministic engine if unset. |
 
 ## Why it's different
 
+- **Provably safe, not just "impact analysis."** Other tools *show* what a change touches; we
+  generate the tests that prove your fix didn't break it — and demonstrate one **failing** on screen.
 - **Grounded, not hallucinated.** The graph is parsed from the actual source (`CALL` / `PERFORM`
   / `COPY` / `EXEC SQL`), not guessed by an LLM. Every claim links to `file:line`.
-- **The safety net others skip.** It generates the tests, not just a diff.
-- **Local & private.** Parsing runs entirely in the browser — no code leaves the machine.
+- **Local & private.** Parsing (and even file upload) runs entirely in the browser — no code leaves the machine.
+- **Human keeps the pen.** Approval gates + an audit trail; the tool never auto-applies.
 
 ---
 
@@ -48,17 +66,19 @@ npm run build    # typecheck + production build
 
 ## Demo script (≈2 min)
 
-1. Land on **"add a 15% VAT tier"** — the graph lights up: **VATCALC** (target) ripples to
-   **9 programs** across **7 interfaces**, **5 flagged high-risk**.
-2. Open **Spec** → point at the extracted constant `WS-VAT-RATE = 0.200` cited to
-   `src/VATCALC.cbl:13` — *"this is the exact literal your change touches, and here's where."*
-3. Open **Tests** → the target test pins `VAT = 20.00` on £100 — *"change the rate and this
-   fails loudly."*
-4. Click **TAXRPT** (or the chips) to re-target and watch the blast radius recompute live.
-5. Hit **Approve change plan** → *"logged, nothing applied — the engineer keeps the pen."*
+1. Land on **"add a 15% VAT tier"** — the graph lights up: **VATCALC** ripples to **9 programs**
+   across **7 interfaces**, **5 flagged high-risk**.
+2. Open **Tests** → drag the **Simulate** slider to 15% → the target test flips to **FAIL**:
+   *"that's the six-month bug, caught in one click."* Note the boundary test stays PASS and the
+   downstream tests go STALE (must re-run).
+3. Open **Spec** → click the constant `WS-VAT-RATE = 0.200` → the source peek shows
+   `src/VATCALC.cbl:13` highlighted — line-level evidence, not a summary.
+4. **Export** the tests (pytest) and the **change plan** (.md) — tangible artifacts.
+5. **Approve change plan** → logged to the **Audit** tab with a hash. *Nothing was applied.*
+6. (Optional) **Upload COBOL** → parse your own code live.
 
 Talking point: *"Tracing this by hand is 6–8 weeks and still misses things. Here it's live,
-grounded in the code, and safe to act on."*
+grounded in the code, and provably safe to act on."*
 
 ---
 
@@ -68,27 +88,34 @@ grounded in the code, and safe to act on."*
 src/
   sample/cbsa.ts        A realistic COBOL core-banking module (parsed live)
   engine/
-    parser.ts           COBOL → nodes + edges, with file:line provenance
+    parser.ts           COBOL → nodes + edges + sources, with file:line provenance
     graph.ts            reverse-reachability blast radius + risk scoring + request→target
-    spec.ts             plain-English spec, grounded in source
+    spec.ts             plain-English spec + business constants, grounded in source
     tests.ts            golden-master characterization test scaffolds
-    analyze.ts          orchestrates parse → resolve → blast → spec → tests
-  components/GraphView.tsx   interactive force-graph, coloured by blast state
-  App.tsx               workspace UI (query · graph · impact/spec/tests · approval)
+    simulate.ts         re-evaluate tests against a proposed constant → PASS/FAIL/STALE
+    export.ts           change-plan Markdown + test export (Gherkin / JSON / pytest)
+    llm.ts              optional Claude enhancement (with deterministic fallback)
+    analyze.ts          orchestrates parse → resolve → blast → spec → tests (swappable repo)
+  components/
+    GraphView.tsx       interactive force-graph, coloured by blast state
+    SourcePeek.tsx      source-provenance modal
+  App.tsx               workspace UI (query · graph · impact/spec/tests/audit · simulate · approval)
 ```
 
-The entire pipeline is **deterministic** and needs no API key or network — the demo cannot
-fail on a flaky model call. An LLM layer (richer prose specs, fuzzier request→node matching)
-is a drop-in enhancement on top of this grounded core, not a dependency.
+The core pipeline is **deterministic** and needs no API key or network — the demo cannot fail
+on a flaky model call. The LLM layer is a drop-in enhancement on top of this grounded core.
 
 ## Scope & honesty
 
 - The bundled sample is a compact, hand-written COBOL banking module chosen to be parseable and
-  legible. The parser is real; on a larger corpus (e.g. the CICS Banking Sample App, or Java via
-  a swapped grammar) the same engine applies.
+  legible. The parser is real (and handles fixed-format sequence numbers / col-7 comments); on a
+  larger corpus (e.g. the CICS Banking Sample App, or Java via a swapped grammar) the same engine applies.
 - Metrics shown (9 / 7 / 5) are **computed live** from the sample, not hard-coded.
+- "Runnable" test export: the computable cases (the VAT math) genuinely run under pytest; opaque
+  golden-masters are emitted as `xfail` stubs pending a program runner — no overclaiming.
 
 ## Roadmap
 
-COBOL today → **SAP / ABAP** and the 2027 S/4HANA migration → any legacy stack.
-Discoverable as an agent on **ASI:One (Fetch)** for the conversational entry point.
+COBOL today → **SAP / ABAP** and the 2027 S/4HANA migration → any legacy stack. CI gate that
+blocks a PR when a characterization test breaks. Multi-agent crew via Coral. Discoverable as an
+agent on **ASI:One (Fetch)** for the conversational entry point.
