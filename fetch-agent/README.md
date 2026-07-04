@@ -12,35 +12,37 @@ radius, the high-risk programs, the interfaces in scope, and a link to the live 
 It runs the same analysis engine as the web app (`engine.py` is a Python port), so the
 answers match: *"add a 15% VAT tier" → VATCALC → 9 programs, 7 interfaces, 5 high-risk.*
 
-## Deploy as a Hosted Agent — recommended (no local process)
+## Make it usable in ASI:One (the part that actually matters)
 
-A local agent only responds while `python agent.py` is running on your machine — fragile
-during judging. Instead, host it on Agentverse's infra with the single self-contained file
-**`hosted_agent.py`** (graph embedded, no extra imports):
+ASI:One only routes to an agent that (a) implements the Chat Protocol, (b) sets
+`publish_agent_details=True`, (c) replies with an `EndSessionContent`, and (d) is **running and
+reachable**. Both `agent.py` and `hosted_agent.py` now do (a)–(c). To get (d):
 
-1. **https://agentverse.ai** → **+ New Agent** → **Blank Agent (Hosted)**.
-2. Paste **all of `hosted_agent.py`** into the editor, replacing the default code.
-3. Click **Run**. `publish_manifest=True` publishes the Chat Protocol to the Almanac.
-4. On the agent's page, set a **name + description + tags**, e.g.
-   *"legacy safety net — blast radius of a change to legacy COBOL code"* (helps ASI:One search).
-5. Open **https://asi1.ai** → search *legacy safety net* → ask *"what breaks if I change VAT?"*
-   and **screenshot the reply** (that's the Fetch bounty's ASI:One-demo proof).
-
-## Run locally instead (optional)
+**Recommended — run as a Mailbox Agent (reliably reachable by ASI:One):**
 
 ```bash
 pip install -r requirements.txt
-# optional: a stable address across restarts (the seed is a private key — keep it secret)
-export LSN_AGENT_SEED="$(python -c 'import secrets;print(secrets.token_hex(32))')"
-python agent.py            # prints its address; connect it via the inspector link
+export LSN_AGENT_SEED="$(python -c 'import secrets;print(secrets.token_hex(32))')"  # stable address
+python agent.py
 ```
 
-The agent's `seed` is loaded from `LSN_AGENT_SEED` (never committed). On Agentverse
-Hosted Agents you can leave it unset — the platform assigns and persists a secure identity.
+1. The terminal prints an **Agent Inspector** link — open it, sign in to Agentverse, and click
+   **Connect → Mailbox** to pair the running agent. Keep the process running.
+2. On the agent's Agentverse profile → **Search Visibility** tab → add keywords, e.g.
+   `legacy code, COBOL, blast radius, impact analysis, change safety, refactoring`. This is what
+   lets ASI:One find and route to it.
+3. **Test on Agentverse first:** click **Chat with Agent** and send *"what breaks if I change VAT?"*.
+   If it returns the VATCALC blast radius, the agent works.
+4. Then open **https://asi1.ai**, ask the same question, confirm it routes to your agent, and
+   **share the chat URL** (the Fetch bounty proof).
 
-`agent.py` starts with a mailbox so it can receive ASI:One messages without a public IP —
-but it must stay running, and the Agentverse inspector must reach it on your own localhost.
-Prefer the hosted path above for judging.
+**Alternative — Hosted Agent:** paste `hosted_agent.py` into a Blank Hosted Agent on Agentverse
+and Run. Still do step 2 (keywords) and step 3 (Chat with Agent) before testing ASI:One.
+
+**If ASI:One says it "can't invoke / read-only":** the agent is registered but not reachable/enabled.
+Fix: (i) confirm it's **running** (mailbox connected or hosted Active), (ii) `publish_agent_details=True`
+is set, (iii) add **Search Visibility keywords**, (iv) verify **Chat with Agent** works on Agentverse
+before trying ASI:One.
 
 ## Live agent
 

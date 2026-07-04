@@ -24,6 +24,7 @@ from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
+    EndSessionContent,
     TextContent,
     chat_protocol_spec,
 )
@@ -186,6 +187,8 @@ def analyse(request):
 agent = Agent(
     name="legacy-safety-net",
     seed=os.environ.get("LSN_AGENT_SEED"),
+    mailbox=True,                 # connect via the Inspector link so ASI:One can reach it
+    publish_agent_details=True,   # register agent details for ASI:One discovery/routing
 )
 
 chat = Protocol(spec=chat_protocol_spec)
@@ -199,7 +202,7 @@ async def on_message(ctx: Context, sender: str, msg: ChatMessage):
         timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id))
     await ctx.send(sender, ChatMessage(
         timestamp=datetime.now(timezone.utc), msg_id=uuid4(),
-        content=[TextContent(type="text", text=analyse(text))]))
+        content=[TextContent(type="text", text=analyse(text)), EndSessionContent(type="end-session")]))
 
 
 @chat.on_message(ChatAcknowledgement)

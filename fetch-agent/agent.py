@@ -19,6 +19,7 @@ from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
+    EndSessionContent,
     TextContent,
     chat_protocol_spec,
 )
@@ -37,6 +38,7 @@ agent = Agent(
     seed=os.environ.get("LSN_AGENT_SEED"),
     port=8001,
     mailbox=True,
+    publish_agent_details=True,   # register agent details for ASI:One discovery/routing
 )
 
 chat = Protocol(spec=chat_protocol_spec)
@@ -92,7 +94,7 @@ async def on_message(ctx: Context, sender: str, msg: ChatMessage):
         ChatMessage(
             timestamp=datetime.now(timezone.utc),
             msg_id=uuid4(),
-            content=[TextContent(type="text", text=reply)],
+            content=[TextContent(type="text", text=reply), EndSessionContent(type="end-session")],
         ),
     )
 
