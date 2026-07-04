@@ -8,24 +8,30 @@ radius, the high-risk programs, the interfaces in scope, and a link to the live 
 It runs the same analysis engine as the web app (`engine.py` is a Python port), so the
 answers match: *"add a 15% VAT tier" → VATCALC → 9 programs, 7 interfaces, 5 high-risk.*
 
-## Run locally
+## Deploy as a Hosted Agent — recommended (no local process)
+
+A local agent only responds while `python agent.py` is running on your machine — fragile
+during judging. Instead, host it on Agentverse's infra with the single self-contained file
+**`hosted_agent.py`** (graph embedded, no extra imports):
+
+1. **https://agentverse.ai** → **+ New Agent** → **Blank Agent (Hosted)**.
+2. Paste **all of `hosted_agent.py`** into the editor, replacing the default code.
+3. Click **Run**. `publish_manifest=True` publishes the Chat Protocol to the Almanac.
+4. On the agent's page, set a **name + description + tags**, e.g.
+   *"legacy safety net — blast radius of a change to legacy COBOL code"* (helps ASI:One search).
+5. Open **https://asi1.ai** → search *legacy safety net* → ask *"what breaks if I change VAT?"*
+   and **screenshot the reply** (that's the Fetch bounty's ASI:One-demo proof).
+
+## Run locally instead (optional)
 
 ```bash
 pip install -r requirements.txt
-python agent.py
+python agent.py            # prints its address; connect it via the inspector link
 ```
 
-The agent prints its **address** and starts with a mailbox, so it can receive messages
-from ASI:One without a public IP.
-
-## Register on Agentverse → discoverable on ASI:One
-
-1. Sign in at **https://agentverse.ai**.
-2. **Mailbox → Connect a Mailbox Agent**, and pair it with the address printed by `agent.py`
-   (or create a hosted agent and paste `agent.py` + `engine.py` into it).
-3. `agent.include(chat, publish_manifest=True)` already publishes the Chat Protocol manifest,
-   which is what makes the agent **discoverable and callable from ASI:One**.
-4. Open **https://asi1.ai**, search for *legacy safety net*, and ask it a change question.
+`agent.py` starts with a mailbox so it can receive ASI:One messages without a public IP —
+but it must stay running, and the Agentverse inspector must reach it on your own localhost.
+Prefer the hosted path above for judging.
 
 ## Try it (example)
 
@@ -37,6 +43,7 @@ from ASI:One without a public IP.
 
 ## Files
 
-- `agent.py` — the uAgent + Chat Protocol handler
+- `hosted_agent.py` — **single-file** agent (graph embedded) for Agentverse Hosted Agents
+- `agent.py` — the uAgent + Chat Protocol handler (local, imports `engine.py`)
 - `engine.py` — COBOL parser + blast-radius engine (port of the web engine)
 - `requirements.txt` — `uagents`
