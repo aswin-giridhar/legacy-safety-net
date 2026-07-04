@@ -11,7 +11,7 @@ approval gate and an audit trail.
 |---|---|
 | **Live app** | https://legacy-safety-net.vercel.app |
 | **GitHub (public)** | https://github.com/aswin-giridhar/legacy-safety-net |
-| **ASI:One agent** | Active on Agentverse — `agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa` |
+| **ASI:One agent** | `legacy-safety-net` — chat live at https://asi1.ai/ai/agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa · [Agentverse profile](https://agentverse.ai/agents/details/agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa/profile) · proof: [docs/asi-one-conversation.pdf](docs/asi-one-conversation.pdf) |
 | **Pitch deck** | `legacy-safety-net-deck.html` (HTML) · `legacy-safety-net.pptx` (Google Slides) |
 | **Builder** | Aswin Giridhar |
 
@@ -59,7 +59,7 @@ ASI:One agent, not a prototype.
 
 ## Final steps checklist
 
-- [ ] **ASI:One shared chat URL + screenshot** — open the agent's **Chat with Agent** on Agentverse (direct `asi1.ai/ai/<address>` link, routes to your agent) → paste a prompt below → use **Share** for the public session URL
+- [x] **ASI:One proof** — public agent page `https://asi1.ai/ai/agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa` (anyone can chat with the agent) + exported `conversation_asi.pdf` showing the VATCALC → 9/7/5 answer. (ASI:One has no public-transcript share; the `/chat/<id>` link is login-gated.)
 - [ ] **Web demo recording** — 60–90s: open on the **Tests** tab, drag the rate slider to show the RED fail, peek a citation, approve → audit
 - [ ] Confirm the deck's closing slide links (demo, agent, GitHub)
 - [ ] Submit to the Conduct track + the Fetch/Superteam listing
