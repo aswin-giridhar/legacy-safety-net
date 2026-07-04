@@ -56,7 +56,8 @@ export function generateSpec(repo: ParsedRepo, id: string): Spec | null {
   // business constants (e.g. the VAT rate literal), extracted with provenance
   const constants: Spec["constants"] = [];
   prog.source.split("\n").forEach((raw, i) => {
-    const m = raw.match(/^\s*\d\d\s+([A-Z0-9-]+)\b.*\bVALUE\s+([0-9][0-9.]*)/i);
+    // capture only the numeric literal, NOT a following COBOL statement terminator '.'
+    const m = raw.match(/^\s*\d\d\s+([A-Z0-9-]+)\b.*\bVALUE\s+([0-9]+(?:\.[0-9]+)?)/i);
     if (m) {
       constants.push({ name: m[1].toUpperCase(), value: m[2], line: i + 1 });
       citations.push({ claim: `Constant ${m[1].toUpperCase()} = ${m[2]}`, file: prog.file, line: i + 1, text: raw.trim() });

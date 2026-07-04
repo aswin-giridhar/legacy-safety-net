@@ -24,10 +24,12 @@ export default function GraphView({
   repo,
   blast,
   onSelect,
+  alert = false,
 }: {
   repo: ParsedRepo;
   blast: BlastResult;
   onSelect: (id: string) => void;
+  alert?: boolean;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<any>(null);
@@ -73,9 +75,16 @@ export default function GraphView({
   }, [repo, stateOf]);
 
   useEffect(() => {
-    // gentle re-center whenever the analysis changes
-    const t = setTimeout(() => fgRef.current?.zoomToFit?.(500, 60), 300);
-    return () => clearTimeout(t);
+    // gentle re-center whenever the analysis changes, clamped so tiny graphs don't balloon
+    let inner: ReturnType<typeof setTimeout>;
+    const t = setTimeout(() => {
+      fgRef.current?.zoomToFit?.(500, 60);
+      inner = setTimeout(() => {
+        const z = fgRef.current?.zoom?.();
+        if (typeof z === "number" && z > 3.2) fgRef.current?.zoom?.(3.2, 250);
+      }, 560);
+    }, 300);
+    return () => { clearTimeout(t); clearTimeout(inner); };
   }, [blast.target, size.w]);
 
   return (
@@ -109,8 +118,8 @@ export default function GraphView({
           ctx.fill();
         }}
         nodeCanvasObject={(n: any, ctx: CanvasRenderingContext2D, scale: number) => {
-          const c = colorFor(n.state);
           const isTarget = n.state === "target";
+          const c = isTarget && alert ? COL.risk : colorFor(n.state);
           const r = n.kind === "program" ? (isTarget ? 7 : 5.2) : 4;
           const dim = n.state === "mapped";
           ctx.globalAlpha = dim ? 0.55 : 1;
@@ -136,10 +145,10 @@ export default function GraphView({
           ctx.fillStyle = c;
           ctx.fill();
           if (isTarget) {
-            ctx.lineWidth = 1.6 / scale;
-            ctx.strokeStyle = COL.amber;
+            ctx.lineWidth = (alert ? 2.4 : 1.6) / scale;
+            ctx.strokeStyle = alert ? COL.risk : COL.amber;
             ctx.beginPath();
-            ctx.arc(n.x, n.y, r + 3, 0, 2 * Math.PI);
+            ctx.arc(n.x, n.y, r + (alert ? 5 : 3), 0, 2 * Math.PI);
             ctx.stroke();
           }
 

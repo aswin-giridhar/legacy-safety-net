@@ -37,7 +37,8 @@ Given a plain-English change request (e.g. *"add a 15% VAT tier"*), Legacy Safet
 
 | Feature | What it does |
 |---|---|
-| **Simulate a change** | Drag the target's constant (e.g. the VAT rate); each test re-evaluates live as **PASS / FAIL / STALE**. This is *"the six-month bug, caught in one click."* |
+| **Simulate a change** | Drag the target's constant (e.g. the VAT rate); each test re-evaluates live as **PASS / FAIL / STALE**, the graph **pulses the target red**, and a **grounded diff** of the proposed edit appears. *"The six-month bug, caught in one click."* |
+| **Test coverage** | Shows how many high-risk blast-radius paths have a pinning test ("5 of 5"). |
 | **Export tests** | Download the characterization tests as Gherkin `.feature`, a JSON golden-master, or a **runnable pytest** (the computable cases actually execute). |
 | **Export change plan** | One-click Markdown change plan: blast radius, risk register, ordered execution steps, and a sign-off block. |
 | **Provenance peek** | Click any citation → view the exact `.cbl` source lines, with the referenced line highlighted. Grounded, not hallucinated. |

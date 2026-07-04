@@ -40,3 +40,15 @@ export function simSummary(results: SimResult[]): { fail: number; stale: number;
     { fail: 0, stale: 0, pass: 0 },
   );
 }
+
+// The concrete source edit a simulated change implies — a real diff to approve.
+export function rateDiff(sourceLine: string | undefined, oldValue: string, newRate: number): { before: string; after: string } | null {
+  if (!sourceLine) return null;
+  const decimals = (oldValue.split(".")[1] || "").length || 3;
+  const newStr = newRate.toFixed(decimals);
+  if (newStr === oldValue) return null;
+  const before = sourceLine.trim();
+  const after = before.replace(oldValue, newStr);
+  if (after === before) return null;
+  return { before, after };
+}

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import GraphView from "./components/GraphView";
+import Icon from "./components/Icon";
 import SourcePeek, { type PeekTarget } from "./components/SourcePeek";
+import { ImpactTab, SpecTab, TestsTab, AuditTab } from "./components/panels";
 import { analyzeRequest, analyzeTarget, getRepo, parseFiles, type Analysis } from "./engine/analyze";
 import { getKey, hasKey, llmResolveTarget, llmSpecProse, setKey } from "./engine/llm";
-import { simulate } from "./engine/simulate";
-import { changePlanMarkdown, download, testsToGherkin, testsToJSON, testsToPytest } from "./engine/export";
+import { simulate, rateDiff } from "./engine/simulate";
+import { changePlanMarkdown, download } from "./engine/export";
+import { hash, type AuditEntry } from "./engine/audit";
 import type { ParsedRepo } from "./engine/types";
 import "./App.css";
 
@@ -16,22 +19,6 @@ const EXAMPLES = [
 ];
 
 type Tab = "impact" | "spec" | "tests" | "audit";
-interface AuditEntry {
-  id: string;
-  time: string;
-  request: string;
-  target: string;
-  affected: number;
-  highRisk: number;
-  approver: string;
-  hash: string;
-}
-
-function hash(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  return h.toString(16).padStart(8, "0");
-}
 
 export default function App() {
   const [repo, setRepo] = useState<ParsedRepo>(() => getRepo());
@@ -59,9 +46,28 @@ export default function App() {
     try { localStorage.setItem("lsn.audit", JSON.stringify(audit)); } catch { /* ignore */ }
   }, [audit]);
 
+  // toasts (aria-live feedback)
+  const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
+  const toastId = useRef(0);
+  function toast(msg: string) {
+    const id = (toastId.current += 1);
+    setToasts((t) => [...t, { id, msg }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
+  }
+
+  // deep link: read #t=TARGET on mount, write it on target change
+  useEffect(() => {
+    const m = location.hash.match(/t=([A-Za-z0-9-]+)/);
+    const id = m?.[1]?.toUpperCase();
+    if (id && getRepo().programs[id]) { setAnalysis(analyzeTarget(id, getRepo())); setRequest(""); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (isSample) { try { history.replaceState(null, "", `#t=${analysis.target}`); } catch { /* ignore */ } }
+  }, [analysis.target, isSample]);
+
   const b = analysis.blast;
 
-  // simulation knob: the target's numeric constant (e.g. the VAT rate)
   const baselineConst = useMemo(
     () => analysis.spec?.constants.find((c) => /RATE/i.test(c.name)) ?? analysis.spec?.constants[0] ?? null,
     [analysis],
@@ -71,38 +77,46 @@ export default function App() {
   const [simRate, setSimRate] = useState<number | null>(baselineRate);
   useEffect(() => { setSimRate(baselineRate); }, [analysis.target, baselineRate]);
   const simResults = canSim && simRate != null ? simulate(analysis.tests, baselineRate!, simRate) : null;
+  const simChanged = canSim && simRate != null && baselineRate != null && Math.abs(simRate - baselineRate) > 1e-9;
+  const failCount = simResults?.filter((r) => r.status === "fail").length ?? 0;
+  const failing = simChanged && failCount > 0;
 
-  function reset() { setApproved(false); setAiProse(null); }
+  const coverage = useMemo(() => {
+    const covered = new Set(analysis.tests.filter((t) => t.kind === "regression").map((t) => t.program));
+    return { covered: b.highRisk.filter((id) => covered.has(id)).length, total: b.highRisk.length };
+  }, [analysis.tests, b.highRisk]);
+
+  const diff = useMemo(() => {
+    if (!canSim || !baselineConst || simRate == null || !analysis.spec) return null;
+    const line = repo.sources[analysis.spec.file]?.split("\n")[baselineConst.line - 1];
+    return rateDiff(line, baselineConst.value, simRate);
+  }, [canSim, baselineConst, simRate, analysis.spec, repo]);
+
+  function resetLocal() { setApproved(false); setAiProse(null); }
 
   async function enhance(a: Analysis) {
     if (!aiOn || !hasKey() || !a.spec) return;
     setAiBusy(true);
-    try {
-      const prose = await llmSpecProse(repo, a.spec);
-      if (prose) setAiProse({ target: a.target, text: prose });
-    } finally { setAiBusy(false); }
+    try { const prose = await llmSpecProse(repo, a.spec); if (prose) setAiProse({ target: a.target, text: prose }); }
+    finally { setAiBusy(false); }
   }
 
   async function run(req: string) {
-    setRequest(req);
-    reset();
+    setRequest(req); resetLocal();
     let a = analyzeRequest(req, repo);
     setAnalysis(a);
     if (aiOn && hasKey()) {
       setAiBusy(true);
       const t = await llmResolveTarget(repo, req);
       if (t && t.id !== a.target && repo.programs[t.id]) { a = analyzeTarget(t.id, repo); setAnalysis(a); }
-      setAiBusy(false);
-      enhance(a);
+      setAiBusy(false); enhance(a);
     }
   }
 
   function retarget(id: string) {
     if (!repo.programs[id]) return;
     const a = analyzeTarget(id, repo);
-    setAnalysis(a);
-    reset();
-    enhance(a);
+    setAnalysis(a); resetLocal(); enhance(a);
   }
 
   async function onFiles(list: FileList | null) {
@@ -110,73 +124,58 @@ export default function App() {
     const files = await Promise.all(Array.from(list).map(async (f) => ({ path: f.name, content: await f.text() })));
     const name = files.length === 1 ? files[0].path : `Uploaded (${files.length} files)`;
     const r = parseFiles(files, name);
-    if (Object.keys(r.programs).length === 0) {
-      setUploadError("No PROGRAM-ID found in those files — is this COBOL? Keeping the sample loaded.");
-      return;
-    }
-    setUploadError(null);
-    setRepo(r);
-    const first = Object.keys(r.programs)[0];
-    setAnalysis(analyzeTarget(first, r));
-    setRequest("");
-    reset();
+    const nprog = Object.keys(r.programs).length;
+    if (nprog === 0) { setUploadError("No PROGRAM-ID found in those files — is this COBOL? Keeping the sample loaded."); return; }
+    setUploadError(null); setRepo(r);
+    setAnalysis(analyzeTarget(Object.keys(r.programs)[0], r));
+    setRequest(""); resetLocal();
+    toast(`Loaded ${name} — ${nprog} program${nprog > 1 ? "s" : ""}`);
   }
 
   function resetToSample() {
-    const s = getRepo();
-    setRepo(s);
-    setUploadError(null);
-    setAnalysis(analyzeRequest(EXAMPLES[0], s));
-    setRequest(EXAMPLES[0]);
-    reset();
+    const s = getRepo(); setRepo(s); setUploadError(null);
+    setAnalysis(analyzeRequest(EXAMPLES[0], s)); setRequest(EXAMPLES[0]); resetLocal();
   }
 
   function approve() {
     const base: Omit<AuditEntry, "hash"> = {
-      id: hash(analysis.target + ":" + Date.now()),
+      id: hash(analysis.target + ":" + toastId.current + ":" + audit.length),
       time: new Date().toISOString(),
       request: request || analysis.target,
-      target: analysis.target,
-      affected: b.affected.length,
-      highRisk: b.highRisk.length,
+      target: analysis.target, affected: b.affected.length, highRisk: b.highRisk.length,
       approver: approver || "engineer",
     };
-    const entry: AuditEntry = { ...base, hash: hash(JSON.stringify(base)) };
-    setAudit([entry, ...audit]);
+    setAudit([{ ...base, hash: hash(JSON.stringify(base)) }, ...audit]);
     setApproved(true);
+    toast("Change plan approved & logged to the audit trail");
+  }
+
+  function exportChangePlan() {
+    download(`change-plan-${analysis.target}.md`, changePlanMarkdown(analysis, request, repo.name, new Date().toLocaleString()), "text/markdown");
+    toast(`Downloaded change-plan-${analysis.target}.md`);
   }
 
   const targetNode = repo.nodes.find((n) => n.id === analysis.target);
   const proseForTarget = aiProse?.target === analysis.target ? aiProse.text : null;
 
-  function exportChangePlan() {
-    const md = changePlanMarkdown(analysis, request, repo.name, new Date().toLocaleString());
-    download(`change-plan-${analysis.target}.md`, md, "text/markdown");
-  }
-
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          <span className="glyph" aria-hidden />
-          <b>LEGACY SAFETY NET</b>
-        </div>
+        <div className="brand"><span className="glyph" aria-hidden /><b>LEGACY SAFETY NET</b></div>
         <div className="repometa">
           <span className="repo">{repo.name}</span>
           {!isSample && <span className="custom">custom</span>}
-          <span className="sep">·</span>
-          <span>{repo.fileCount} files</span>
-          <span className="sep">·</span>
-          <span>{repo.loc.toLocaleString()} LOC</span>
+          <span className="sep">·</span><span>{repo.fileCount} files</span>
+          <span className="sep">·</span><span>{repo.loc.toLocaleString()} LOC</span>
         </div>
         <div className="topright">
           <input ref={fileInput} type="file" accept=".cbl,.cob,.cpy,.txt,.cobol" multiple hidden
                  onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
-          <button className="ghostbtn" onClick={() => fileInput.current?.click()}>⬆ Upload COBOL</button>
-          {!isSample && <button className="ghostbtn" onClick={resetToSample}>↺ Sample</button>}
+          <button className="ghostbtn" onClick={() => fileInput.current?.click()}><Icon name="upload" size={13} /> Upload COBOL</button>
+          {!isSample && <button className="ghostbtn" onClick={resetToSample}><Icon name="reset" size={13} /> Sample</button>}
           <div className="aiwrap">
             <button className={aiOn && hasKey() ? "aibtn on" : "aibtn"} onClick={() => setAiPanel((p) => !p)}>
-              ✨ AI {aiOn && hasKey() ? "on" : "off"}
+              <Icon name="sparkle" size={13} /> AI {aiOn && hasKey() ? "on" : "off"}
             </button>
             {aiPanel && (
               <div className="aipanel">
@@ -187,13 +186,13 @@ export default function App() {
                 <input type="password" placeholder="Anthropic API key (stored locally)"
                        value={keyDraft} onChange={(e) => setKeyDraft(e.target.value)} />
                 <div className="airow">
-                  <button onClick={() => { setKey(keyDraft); setAiPanel(false); }}>Save</button>
+                  <button onClick={() => { setKey(keyDraft); setAiPanel(false); toast("API key saved locally"); }}>Save</button>
                   <span className="ainote">Falls back to the deterministic engine if unset.</span>
                 </div>
               </div>
             )}
           </div>
-          <div className="privacy" title="Parsing runs entirely in your browser">● local &amp; private</div>
+          <div className="privacy" title="Parsing runs entirely in your browser"><span className="dot" /> local &amp; private</div>
         </div>
       </header>
 
@@ -226,9 +225,12 @@ export default function App() {
       </section>
 
       <main className="workspace">
-        <div className="graphpanel">
-          <div className="panelhead">DEPENDENCY GRAPH<span className="hint"> — click any node to re-target</span></div>
-          <div className="graphcanvas"><GraphView repo={repo} blast={b} onSelect={retarget} /></div>
+        <div className={failing ? "graphpanel alert" : "graphpanel"}>
+          <div className="panelhead">
+            DEPENDENCY GRAPH<span className="hint"> — click any node to re-target</span>
+            {failing && <span className="alertchip"><Icon name="alert" size={12} /> simulated change breaks {failCount} test{failCount > 1 ? "s" : ""}</span>}
+          </div>
+          <div className="graphcanvas"><GraphView repo={repo} blast={b} onSelect={retarget} alert={failing} /></div>
           <div className="legend">
             <span><i style={{ background: "#F5A623" }} /> blast radius</span>
             <span><i style={{ background: "#EA4F54" }} /> high-risk</span>
@@ -244,9 +246,9 @@ export default function App() {
             <Metric n={b.highRisk.length} label="Flagged high-risk" color="#EA4F54" />
           </div>
 
-          <div className="tabs">
+          <div className="tabs" role="tablist">
             {(["impact", "spec", "tests", "audit"] as Tab[]).map((t) => (
-              <button key={t} className={tab === t ? "tab on" : "tab"} onClick={() => setTab(t)}>
+              <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "tab on" : "tab"} onClick={() => setTab(t)}>
                 {t === "impact" ? "Impact" : t === "spec" ? "Spec" : t === "tests" ? `Tests (${analysis.tests.length})` : `Audit (${audit.length})`}
               </button>
             ))}
@@ -256,15 +258,15 @@ export default function App() {
             {tab === "impact" && <ImpactTab analysis={analysis} onSelect={retarget} onExport={exportChangePlan} />}
             {tab === "spec" && <SpecTab analysis={analysis} targetName={targetNode?.id ?? ""} aiProse={proseForTarget} aiBusy={aiBusy} onPeek={setPeek} />}
             {tab === "tests" && (
-              <TestsTab analysis={analysis} canSim={canSim} baselineRate={baselineRate}
-                        simRate={simRate} setSimRate={setSimRate} simResults={simResults} baselineConst={baselineConst} />
+              <TestsTab analysis={analysis} canSim={canSim} baselineRate={baselineRate} simRate={simRate} setSimRate={setSimRate}
+                        simResults={simResults} baselineConst={baselineConst} coverage={coverage} diff={diff} onToast={toast} />
             )}
-            {tab === "audit" && <AuditTab audit={audit} approver={approver} setApprover={setApprover} onClear={() => setAudit([])} />}
+            {tab === "audit" && <AuditTab audit={audit} approver={approver} setApprover={setApprover} onClear={() => setAudit([])} onToast={toast} />}
           </div>
 
           <div className="approve">
             <button className={approved ? "approvebtn done" : "approvebtn"} onClick={approve} disabled={approved}>
-              {approved ? "✓ Change plan approved & logged" : "Approve change plan"}
+              {approved ? <><Icon name="check" size={15} /> Change plan approved &amp; logged</> : "Approve change plan"}
             </button>
             <p className="note">
               {approved
@@ -276,190 +278,13 @@ export default function App() {
       </main>
 
       {peek && <SourcePeek sources={repo.sources} target={peek} onClose={() => setPeek(null)} />}
+      <div className="toasthost" aria-live="polite">
+        {toasts.map((t) => <div key={t.id} className="toast"><Icon name="check" size={13} /> {t.msg}</div>)}
+      </div>
     </div>
   );
 }
 
 function Metric({ n, label, color }: { n: number; label: string; color: string }) {
   return <div className="metric"><div className="mn" style={{ color }}>{n}</div><div className="mk">{label}</div></div>;
-}
-
-function ImpactTab({ analysis, onSelect, onExport }: { analysis: Analysis; onSelect: (id: string) => void; onExport: () => void }) {
-  const b = analysis.blast;
-  if (b.affected.length === 0)
-    return <p className="empty">Nothing else depends on <b>{b.target}</b> — this change is self-contained.</p>;
-  const risk = new Set(b.highRisk);
-  const ordered = [...b.affected].sort((x, y) => (b.paths[x]?.length ?? 0) - (b.paths[y]?.length ?? 0));
-  return (
-    <div className="impact">
-      <div className="tabtoolbar">
-        <p className="lede">Changing <b>{b.target}</b> ripples to <b>{b.affected.length}</b> programs across <b>{b.interfaces.length}</b> interfaces.</p>
-        <button className="minibtn" onClick={onExport}>⬇ Change plan</button>
-      </div>
-      <ul className="afflist">
-        {ordered.map((id) => (
-          <li key={id} className={risk.has(id) ? "aff risk" : "aff"}>
-            <button className="affname" onClick={() => onSelect(id)}>{id}</button>
-            {risk.has(id) && <span className="riskpill">HIGH-RISK</span>}
-            <div className="affpath">{(b.paths[id] ?? []).join(" → ")}</div>
-            <div className="affreason">{b.reasons[id]}</div>
-          </li>
-        ))}
-      </ul>
-      <div className="ifaces">
-        <span className="ifhead">Interfaces in scope</span>
-        {b.interfaces.map((i) => <span key={i} className="iftag">{i}</span>)}
-      </div>
-    </div>
-  );
-}
-
-function SpecTab({ analysis, targetName, aiProse, aiBusy, onPeek }: {
-  analysis: Analysis; targetName: string; aiProse: string | null; aiBusy: boolean; onPeek: (t: PeekTarget) => void;
-}) {
-  const s = analysis.spec;
-  if (!s) return <p className="empty">{targetName} is an external/interface node — no source to document.</p>;
-  return (
-    <div className="spec">
-      <div className="spechead">
-        <b>{s.id}</b>
-        <button className="loclink" onClick={() => onPeek({ file: s.file, line: s.line })}>{s.file}:{s.line} · {s.loc} LOC</button>
-      </div>
-      {aiProse ? <p className="summary"><span className="aitag">AI</span> {aiProse}</p>
-        : <p className="summary">{aiBusy ? <span className="muted">Enhancing with Claude…</span> : s.summary}</p>}
-      {s.constants.length > 0 && (
-        <div className="consts">
-          {s.constants.map((c) => (
-            <button key={c.name} className="const" onClick={() => onPeek({ file: s.file, line: c.line })}>
-              <code>{c.name} = {c.value}</code>
-              <span className="cprov">{s.file}:{c.line} ↗</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <ul className="purpose">{s.purpose.map((p, i) => <li key={i}>{p}</li>)}</ul>
-      <div className="citations">
-        <span className="cithead">Grounded in source — click to view</span>
-        {s.citations.map((c, i) => (
-          <button key={i} className="cite" onClick={() => onPeek({ file: c.file, line: c.line })}>
-            <div className="citeclaim">{c.claim}</div>
-            <div className="citesrc"><span className="fl">{c.file}:{c.line} ↗</span> <code>{c.text}</code></div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TestsTab({ analysis, canSim, baselineRate, simRate, setSimRate, simResults, baselineConst }: {
-  analysis: Analysis; canSim: boolean; baselineRate: number | null;
-  simRate: number | null; setSimRate: (n: number) => void; simResults: ReturnType<typeof simulate> | null;
-  baselineConst: { name: string; value: string; line: number } | null;
-}) {
-  const tests = analysis.tests;
-  if (tests.length === 0) return <p className="empty">No characterization tests generated for this node.</p>;
-  const changed = canSim && simRate != null && baselineRate != null && Math.abs(simRate - baselineRate) > 1e-9;
-  const fails = simResults?.filter((r) => r.status === "fail").length ?? 0;
-  const stale = simResults?.filter((r) => r.status === "stale").length ?? 0;
-
-  function exportTests(fmt: "gherkin" | "json" | "pytest") {
-    const t = analysis.target;
-    if (fmt === "gherkin") download(`${t}.feature`, testsToGherkin(tests, t), "text/plain");
-    else if (fmt === "json") download(`${t}.tests.json`, testsToJSON(tests, t), "application/json");
-    else download(`test_${t.toLowerCase()}.py`, testsToPytest(tests, t, baselineRate ?? 0.2), "text/x-python");
-  }
-
-  return (
-    <div className="tests">
-      <div className="tabtoolbar">
-        <p className="lede">Golden-master tests that pin today's behaviour. A change that alters any fails loudly.</p>
-      </div>
-      <div className="exportrow">
-        <span className="exlabel">Export:</span>
-        <button className="minibtn" onClick={() => exportTests("gherkin")}>.feature</button>
-        <button className="minibtn" onClick={() => exportTests("json")}>.json</button>
-        <button className="minibtn" onClick={() => exportTests("pytest")}>pytest</button>
-      </div>
-
-      {canSim && baselineRate != null && simRate != null && (
-        <div className={changed ? "simbox on" : "simbox"}>
-          <div className="simhead">
-            <span>Simulate a change — <code>{baselineConst?.name}</code></span>
-            <button className="minibtn" onClick={() => setSimRate(baselineRate)} disabled={!changed}>reset</button>
-          </div>
-          <div className="simctl">
-            <input type="range" min={0} max={0.4} step={0.005} value={simRate}
-                   onChange={(e) => setSimRate(parseFloat(e.target.value))} aria-label="Proposed rate" />
-            <span className="simval">{(simRate * 100).toFixed(1)}%</span>
-            <span className="simbase">baseline {(baselineRate * 100).toFixed(1)}%</span>
-          </div>
-          {changed && (
-            <div className="simverdict">
-              {fails > 0 ? <b className="vfail">{fails} test{fails > 1 ? "s" : ""} FAILING</b> : <b className="vok">behaviour preserved</b>}
-              {stale > 0 && <span className="vstale"> · {stale} must re-run</span>}
-              <span className="vhint"> — this is the six-month bug, caught in one click.</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tests.map((t, i) => {
-        const r = simResults?.[i];
-        const st = changed ? r?.status : undefined;
-        return (
-          <div key={i} className={`test${st ? " s-" + st : ""}`}>
-            <div className="testtop">
-              <span className={`tkind ${t.kind}`}>{t.kind}</span>
-              <span className="ttitle">{t.title}</span>
-              {st && <span className={`sbadge ${st}`}>{st === "pass" ? "PASS" : st === "fail" ? "FAIL" : "STALE"}</span>}
-            </div>
-            <dl>
-              <div><dt>GIVEN</dt><dd>{t.given}</dd></div>
-              <div><dt>WHEN</dt><dd>{t.when}</dd></div>
-              <div><dt>THEN</dt><dd>{t.then}</dd></div>
-            </dl>
-            {st && st !== "pass" && r && (
-              <div className="simrow">expected <code>{r.expected}</code> · now <code className={st === "fail" ? "bad" : ""}>{r.actual}</code></div>
-            )}
-            <div className="pins">Pins {t.pins}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function AuditTab({ audit, approver, setApprover, onClear }: {
-  audit: AuditEntry[]; approver: string; setApprover: (s: string) => void; onClear: () => void;
-}) {
-  function exportLog() {
-    const md = ["# Change audit trail", ""].concat(
-      audit.map((e) => `- \`${e.hash}\` · ${e.time} · **${e.target}** (${e.affected} affected, ${e.highRisk} high-risk) · approved by ${e.approver} · _"${e.request}"_`),
-    ).join("\n");
-    download("audit-trail.md", md, "text/markdown");
-  }
-  return (
-    <div className="audit">
-      <div className="tabtoolbar">
-        <label className="approverfield">Approver <input value={approver} onChange={(e) => setApprover(e.target.value)} /></label>
-        {audit.length > 0 && <button className="minibtn" onClick={exportLog}>⬇ Export</button>}
-      </div>
-      {audit.length === 0 ? (
-        <p className="empty">No approvals yet. Approve a change plan and it's logged here with a content hash for traceability.</p>
-      ) : (
-        <>
-          <ul className="auditlist">
-            {audit.map((e) => (
-              <li key={e.id} className="aentry">
-                <div className="atop"><span className="ahash">{e.hash}</span><span className="atime">{new Date(e.time).toLocaleString()}</span></div>
-                <div className="atarget"><b>{e.target}</b> — {e.affected} affected · {e.highRisk} high-risk</div>
-                <div className="areq">"{e.request}" — approved by {e.approver}</div>
-              </li>
-            ))}
-          </ul>
-          <button className="minibtn danger" onClick={onClear}>Clear log</button>
-        </>
-      )}
-    </div>
-  );
 }
