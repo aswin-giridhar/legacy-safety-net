@@ -38,6 +38,34 @@ Hosted Agents you can leave it unset — the platform assigns and persists a sec
 but it must stay running, and the Agentverse inspector must reach it on your own localhost.
 Prefer the hosted path above for judging.
 
+## Live agent
+
+Deployed on Agentverse (Hosted), status **Active**:
+
+```
+agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa
+```
+
+## Demo prompts (paste into ASI:One)
+
+At **https://asi1.ai**, search **legacy safety net**, open the agent's chat, and paste any:
+
+```
+What breaks if I change how VAT is calculated in the core banking system?
+```
+```
+I need to add a 15% VAT tier — which programs are affected and which are high-risk?
+```
+```
+Trace the blast radius of changing how account interest and fees are accrued.
+```
+```
+What should I test before modifying invoice generation?
+```
+
+If ASI:One answers generically instead of routing to the agent, prefix with
+*"Using the legacy safety net agent, …"*. Screenshot the reply for the submission.
+
 ## Try it (example)
 
 > **You:** what breaks if I change how VAT is calculated?
