@@ -1,6 +1,8 @@
 import type { BlastResult, ParsedRepo } from "./types";
 
 const FINANCIAL_STORES = new Set(["LEDGER", "ACCOUNT"]);
+// interfaces holding PII or financial data — a change touching these needs a data-safety review
+const SENSITIVE_RE = /(CUSTOMER|CUST|PERSON|EMPLOYEE|ACCOUNT|LEDGER|PAYMENT|CARD|SSN|STATEMENT|STMT|BALANCE)/i;
 
 // Programs/copybooks that (transitively) depend on `target` — i.e. the things
 // that break when `target` changes. Computed by reverse BFS over call+copy edges.
@@ -73,7 +75,9 @@ export function blastRadius(repo: ParsedRepo, target: string): BlastResult {
     }
   }
 
-  return { target, affected, interfaces: Array.from(interfaces), highRisk, reasons, paths };
+  const ifaceList = Array.from(interfaces);
+  const sensitive = ifaceList.filter((i) => SENSITIVE_RE.test(i));
+  return { target, affected, interfaces: ifaceList, sensitive, highRisk, reasons, paths };
 }
 
 // Map a plain-English change request to the most likely target program.

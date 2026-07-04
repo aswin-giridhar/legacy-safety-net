@@ -243,15 +243,20 @@ export const SAMPLE_FILES: SourceFile[] = [
     content: `      IDENTIFICATION DIVISION.
        PROGRAM-ID. EODBATCH.
       *----------------------------------------------------------------
-      * END-OF-DAY BATCH. Posts the day's ledger and produces the tax
-      * report. Second top-level driver.
+      * END-OF-DAY BATCH. Posts the day's ledger, produces the tax
+      * report, then dispatches a reconciliation program chosen at
+      * RUNTIME from control config (dynamic CALL).
       *----------------------------------------------------------------
        ENVIRONMENT DIVISION.
        DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01  WS-RECON-PGM   PIC X(8).
        PROCEDURE DIVISION.
        MAIN-LINE.
            CALL 'LEDGPST' USING WS-DAY
            CALL 'TAXRPT'  USING WS-DAY
+           MOVE WS-CTL-RECON TO WS-RECON-PGM
+           CALL WS-RECON-PGM USING WS-DAY
            GOBACK.
 `,
   },

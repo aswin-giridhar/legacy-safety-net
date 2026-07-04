@@ -151,8 +151,8 @@ export default function App() {
   }
 
   function exportChangePlan() {
-    download(`change-plan-${analysis.target}.md`, changePlanMarkdown(analysis, request, repo.name, new Date().toLocaleString()), "text/markdown");
-    toast(`Downloaded change-plan-${analysis.target}.md`);
+    download(`review-pack-${analysis.target}.md`, changePlanMarkdown(analysis, request, repo.name, new Date().toLocaleString(), repo.dynamicCalls.length), "text/markdown");
+    toast(`Downloaded review-pack-${analysis.target}.md`);
   }
 
   const targetNode = repo.nodes.find((n) => n.id === analysis.target);
@@ -221,6 +221,16 @@ export default function App() {
             </span>
           )}
           {uploadError && <span className="uperr"> · {uploadError}</span>}
+        </div>
+        <div className="trustbar">
+          <span className="tb ok"><span className="tdot" /> Local &amp; private — code never leaves your browser</span>
+          <span className="tb ok"><Icon name="check" size={12} /> Grounded in source (file:line)</span>
+          {repo.dynamicCalls.length > 0 && (
+            <button className="tb warn" onClick={() => setPeek({ file: repo.dynamicCalls[0].file, line: repo.dynamicCalls[0].line })}
+                    title="Click to view — the target is resolved at runtime, so it cannot be statically traced">
+              <Icon name="alert" size={12} /> {repo.dynamicCalls.length} dynamic call{repo.dynamicCalls.length > 1 ? "s" : ""} not statically traced
+            </button>
+          )}
         </div>
       </section>
 

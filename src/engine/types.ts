@@ -38,11 +38,19 @@ export interface Program {
   copies: string[];
 }
 
+export interface DynamicCall {
+  program: string; // the program containing the dynamic CALL
+  via: string; // the data-name the target is resolved through at runtime
+  file: string;
+  line: number;
+}
+
 export interface ParsedRepo {
   nodes: GraphNode[];
   edges: GraphEdge[];
   programs: Record<string, Program>;
   sources: Record<string, string>; // file path -> raw content (for provenance peek)
+  dynamicCalls: DynamicCall[]; // CALLs whose target is a variable — NOT statically traceable
   fileCount: number;
   loc: number;
   name: string;
@@ -52,6 +60,7 @@ export interface BlastResult {
   target: string;
   affected: string[]; // program/copybook ids that transitively depend on target
   interfaces: string[]; // tables + files touched across the blast radius
+  sensitive: string[]; // subset of interfaces holding PII / financial data
   highRisk: string[]; // subset of affected flagged high-risk
   reasons: Record<string, string>; // id -> why it's affected / risky
   paths: Record<string, string[]>; // id -> shortest dependency path to target

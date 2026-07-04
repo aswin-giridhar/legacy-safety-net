@@ -52,8 +52,12 @@ Given a plain-English change request (e.g. *"add a 15% VAT tier"*), Legacy Safet
   generate the tests that prove your fix didn't break it — and demonstrate one **failing** on screen.
 - **Grounded, not hallucinated.** The graph is parsed from the actual source (`CALL` / `PERFORM`
   / `COPY` / `EXEC SQL`), not guessed by an LLM. Every claim links to `file:line`.
-- **Local & private.** Parsing (and even file upload) runs entirely in the browser — no code leaves the machine.
+- **Local & private.** Parsing (and even file upload) runs entirely in the browser — no code leaves the machine. This is the data-safety "hard part" cloud translators skip.
+- **Honest about limits.** Flags calls it can't statically trace (dynamic dispatch) instead of guessing, and reports "N claims, all grounded, 0 hallucinated." Being honest about uncertainty is the anti-hallucination trust move the market is asking for.
+- **Data-safety aware.** Marks when a change's blast radius touches PII / financial stores. The diff + tests + audit export as a **review pack** for an AI-authored change; a per-module **onboarding brief** captures knowledge for the retiring-COBOL-expert problem.
 - **Human keeps the pen.** Approval gates + an audit trail; the tool never auto-applies.
+
+> **We don't rewrite your code** — the flashy, risky, crowded part. We make any change *provably safe*: understanding, safety and privacy, not translation.
 
 ---
 

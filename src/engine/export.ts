@@ -89,7 +89,7 @@ export function testsToPytest(tests: TestScenario[], target: string, baselineRat
   return lines.join("\n");
 }
 
-export function changePlanMarkdown(analysis: Analysis, request: string, repoName: string, stamp: string): string {
+export function changePlanMarkdown(analysis: Analysis, request: string, repoName: string, stamp: string, dynamicCalls = 0): string {
   const b = analysis.blast;
   const s = analysis.spec;
   const risk = new Set(b.highRisk);
@@ -100,7 +100,8 @@ export function changePlanMarkdown(analysis: Analysis, request: string, repoName
       : "LOW";
 
   const lines: string[] = [
-    `# Change Plan — ${b.target}`,
+    `# Review Pack — ${b.target}`,
+    `_A review pack for an AI-authored change: blast radius, tests, and sign-off._`,
     ``,
     `- **Repository:** ${repoName}`,
     `- **Change request:** ${request || "(unspecified)"}`,
@@ -125,7 +126,9 @@ export function changePlanMarkdown(analysis: Analysis, request: string, repoName
   for (const id of ordered) {
     lines.push(`| ${id} | ${(b.paths[id] ?? []).join(" → ")} | ${b.reasons[id] ?? ""} | ${risk.has(id) ? "**HIGH**" : "normal"} |`);
   }
-  lines.push(``, `**Interfaces in scope:** ${b.interfaces.join(", ") || "none"}`, ``);
+  lines.push(``, `**Interfaces in scope:** ${b.interfaces.join(", ") || "none"}`);
+  if (b.sensitive.length) lines.push(`**⚠ Sensitive (PII / financial):** ${b.sensitive.join(", ")} — data-safety review required before this change ships.`);
+  lines.push(``);
 
   if (b.highRisk.length) {
     lines.push(`## Risk register`);
@@ -144,6 +147,12 @@ export function changePlanMarkdown(analysis: Analysis, request: string, repoName
     `3. Run the test suite; confirm the target tests behave as intended and no others regress.`,
     `4. Re-verify high-risk downstream paths: ${b.highRisk.join(", ") || "none"}.`,
     `5. Human review of the diff and sign-off before deploy.`,
+    ``,
+    `## Analysis coverage`,
+    dynamicCalls > 0
+      ? `- ⚠ ${dynamicCalls} call${dynamicCalls > 1 ? "s" : ""} resolved dynamically at runtime — NOT statically traced. Verify these paths manually.`
+      : `- All calls statically resolved; no untraced dynamic dispatch found.`,
+    `- Grounded in the parsed source (every claim cites file:line); the analysis does not execute the code.`,
     ``,
     `## Sign-off`,
     `- Prepared by: legacy-safety-net`,

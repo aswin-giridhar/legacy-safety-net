@@ -1,5 +1,5 @@
 import type { SourceFile } from "../sample/cbsa";
-import type { GraphEdge, GraphNode, ParsedRepo, Program, Provenance } from "./types";
+import type { DynamicCall, GraphEdge, GraphNode, ParsedRepo, Program, Provenance } from "./types";
 
 const isComment = (line: string) =>
   /^\s{0,6}\*/.test(line) || // area-indicator '*' with no sequence numbers
@@ -25,6 +25,7 @@ export function parseRepo(files: SourceFile[], name = "Uploaded repository"): Pa
   const edges: GraphEdge[] = [];
   const programs: Record<string, Program> = {};
   const sources: Record<string, string> = {};
+  const dynamicCalls: DynamicCall[] = [];
   let totalLoc = 0;
   for (const f of files) sources[f.path] = f.content;
 
@@ -100,13 +101,18 @@ export function parseRepo(files: SourceFile[], name = "Uploaded repository"): Pa
         prog.copies.push(cid);
       }
 
-      // CALL 'PROG'
+      // CALL 'PROG'  (static, literal target)
       const call = line.match(/\bCALL\s+['"]([A-Z0-9-]+)['"]/i);
       if (call) {
         const cid = call[1].toUpperCase();
         ensure(cid, "program");
         edges.push({ from: pid, to: cid, kind: "call", prov: prov() });
         prog.calls.push(prov());
+      }
+      // CALL <identifier>  (dynamic — target resolved at runtime, NOT statically traceable)
+      const dyn = !call && line.match(/\bCALL\s+([A-Z][A-Z0-9-]*)/i);
+      if (dyn) {
+        dynamicCalls.push({ program: pid, via: dyn[1].toUpperCase(), file: f.path, line: ln });
       }
 
       // paragraphs (a label in the procedure division, alone on the line ending with '.')
@@ -157,6 +163,7 @@ export function parseRepo(files: SourceFile[], name = "Uploaded repository"): Pa
     edges,
     programs,
     sources,
+    dynamicCalls,
     fileCount: files.length,
     loc: totalLoc,
     name,

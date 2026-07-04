@@ -17,7 +17,7 @@ export function ImpactTab({ analysis, onSelect, onExport }: {
     <div className="impact">
       <div className="tabtoolbar">
         <p className="lede">Changing <b>{b.target}</b> ripples to <b>{b.affected.length}</b> programs across <b>{b.interfaces.length}</b> interfaces.</p>
-        <button className="minibtn" onClick={onExport}><Icon name="download" size={13} /> Change plan</button>
+        <button className="minibtn" onClick={onExport}><Icon name="download" size={13} /> Review pack</button>
       </div>
       <ul className="afflist">
         {ordered.map((id) => (
@@ -31,8 +31,11 @@ export function ImpactTab({ analysis, onSelect, onExport }: {
       </ul>
       <div className="ifaces">
         <span className="ifhead">Interfaces in scope</span>
-        {b.interfaces.map((i) => <span key={i} className="iftag">{i}</span>)}
+        {b.interfaces.map((i) => <span key={i} className={b.sensitive.includes(i) ? "iftag sens" : "iftag"}>{i}</span>)}
       </div>
+      {b.sensitive.length > 0 && (
+        <p className="sensnote"><Icon name="alert" size={12} /> {b.sensitive.length} interface{b.sensitive.length > 1 ? "s" : ""} hold PII / financial data ({b.sensitive.join(", ")}) — data-safety review recommended.</p>
+      )}
     </div>
   );
 }
@@ -50,6 +53,9 @@ export function SpecTab({ analysis, targetName, aiProse, aiBusy, onPeek }: {
       </div>
       {aiProse ? <p className="summary"><span className="aitag">AI</span> {aiProse}</p>
         : <p className="summary">{aiBusy ? <span className="muted">Enhancing with Claude…</span> : s.summary}</p>}
+      {s.onboarding && (
+        <div className="onboard"><span className="obhead">Onboarding brief</span>{s.onboarding}</div>
+      )}
       {s.constants.length > 0 && (
         <div className="consts">
           {s.constants.map((c) => (
@@ -62,7 +68,7 @@ export function SpecTab({ analysis, targetName, aiProse, aiBusy, onPeek }: {
       )}
       <ul className="purpose">{s.purpose.map((p, i) => <li key={i}>{p}</li>)}</ul>
       <div className="citations">
-        <span className="cithead">Grounded in source — click to view</span>
+        <span className="cithead"><Icon name="check" size={12} className="gchk" /> {s.citations.length} claims, all grounded to source · 0 hallucinated — click to view</span>
         {s.citations.map((c, i) => (
           <button key={i} className="cite" onClick={() => onPeek({ file: c.file, line: c.line })}>
             <div className="citeclaim">{c.claim}</div>

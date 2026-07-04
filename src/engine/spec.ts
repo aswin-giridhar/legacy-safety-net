@@ -16,6 +16,7 @@ export interface Spec {
   purpose: string[];
   citations: SpecCitation[];
   constants: { name: string; value: string; line: number }[];
+  onboarding: string; // plain-English "new here? before you touch it…" brief
 }
 
 // Build a plain-English spec purely from parsed structure — every claim is
@@ -64,6 +65,14 @@ export function generateSpec(repo: ParsedRepo, id: string): Spec | null {
     }
   });
 
+  // knowledge-transfer brief for a new engineer (the retiring-COBOL-expert problem)
+  const watch: string[] = [];
+  const writes = dataEdges.filter((e) => e.kind === "writes").map((e) => e.to);
+  if (writes.length) watch.push(`it writes to ${writes.join(", ")} — changes here alter stored data`);
+  if (constants.length) watch.push(`the ${constants.map((c) => c.name).join(", ")} business rule${constants.length > 1 ? "s live" : " lives"} here`);
+  if (prog.calls.length) watch.push(`it delegates to ${prog.calls.length} program${prog.calls.length > 1 ? "s" : ""} — follow the graph before editing`);
+  const onboarding = watch.length ? `Before you touch it: ${watch.join("; ")}.` : "";
+
   return {
     id,
     file: prog.file,
@@ -73,5 +82,6 @@ export function generateSpec(repo: ParsedRepo, id: string): Spec | null {
     purpose,
     citations,
     constants,
+    onboarding,
   };
 }
