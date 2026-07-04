@@ -1,5 +1,7 @@
 # Legacy Safety Net
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
 **Change decades-old code without breaking it.** Point it at a legacy module and get a
 plain-English spec, a live dependency / blast-radius map, and characterization tests that
 pin its current behaviour — then *watch a proposed change turn a test red before you ship it*.
@@ -7,7 +9,7 @@ pin its current behaviour — then *watch a proposed change turn a test red befo
 Built for the **Conduct "Make Legacy Move"** track — UK AI Agent Hackathon EP5.
 
 - **Live app:** https://legacy-safety-net.vercel.app
-- **ASI:One agent (Fetch.ai):** `agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa` (see [`fetch-agent/`](fetch-agent/))
+- **Fetch.ai / ASI:One agent** — name `legacy-safety-net`, address `agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa`. Registered on Agentverse (Hosted, Active), implements the Agent Chat Protocol, and is usable directly inside an ASI:One conversation — no custom frontend required. See [`fetch-agent/`](fetch-agent/).
 
 ![simulate a change → a test fails](docs/screenshots/lsn-simulate.png)
 

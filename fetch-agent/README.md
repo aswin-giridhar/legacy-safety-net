@@ -1,5 +1,9 @@
 # Legacy Safety Net — ASI:One Agent (Fetch.ai)
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
+**Agent name:** `legacy-safety-net` · **Agent address:** `agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa`
+
 A [uAgent](https://fetch.ai/docs) that exposes Legacy Safety Net through the standard
 **Chat Protocol**, so the core use case works **directly inside an ASI:One conversation**.
 Ask it what a change to a legacy module would break; it replies with the computed blast
