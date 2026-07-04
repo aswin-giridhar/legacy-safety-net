@@ -1,7 +1,10 @@
 import type { SourceFile } from "../sample/cbsa";
 import type { GraphEdge, GraphNode, ParsedRepo, Program, Provenance } from "./types";
 
-const isComment = (line: string) => /^\s{0,6}\*/.test(line) || /^\s*\*>/.test(line);
+const isComment = (line: string) =>
+  /^\s{0,6}\*/.test(line) || // area-indicator '*' with no sequence numbers
+  (line.length > 6 && (line[6] === "*" || line[6] === "/")) || // col-7 indicator behind seq numbers
+  /^\s*\*>/.test(line); // free-format comment
 
 // Pull the leading block comment (the business description) of a program.
 function leadingComment(lines: string[], pidLine: number): string {
@@ -17,11 +20,13 @@ function leadingComment(lines: string[], pidLine: number): string {
   return out.join(" ").replace(/\s+/g, " ").trim();
 }
 
-export function parseRepo(files: SourceFile[]): ParsedRepo {
+export function parseRepo(files: SourceFile[], name = "Uploaded repository"): ParsedRepo {
   const nodes = new Map<string, GraphNode>();
   const edges: GraphEdge[] = [];
   const programs: Record<string, Program> = {};
+  const sources: Record<string, string> = {};
   let totalLoc = 0;
+  for (const f of files) sources[f.path] = f.content;
 
   const ensure = (id: string, kind: GraphNode["kind"]): GraphNode => {
     let n = nodes.get(id);
@@ -151,7 +156,9 @@ export function parseRepo(files: SourceFile[]): ParsedRepo {
     nodes: Array.from(nodes.values()),
     edges,
     programs,
+    sources,
     fileCount: files.length,
     loc: totalLoc,
+    name,
   };
 }

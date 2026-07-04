@@ -144,8 +144,82 @@
 .approvebtn.done { background: transparent; color: var(--cyan); border-color: var(--cyan); cursor: default; }
 .note { margin: 10px 2px 0; font-size: 0.76rem; color: var(--dim); line-height: 1.45; }
 
+/* ---------- header controls ---------- */
+.ghostbtn { border: 1px solid var(--line); background: var(--panel-2); color: var(--dim); font-family: var(--mono); font-size: 0.74rem; padding: 6px 10px; border-radius: 7px; white-space: nowrap; }
+.ghostbtn:hover { color: var(--text); border-color: var(--faint); }
+.repometa .custom { color: var(--amber); border: 1px solid var(--amber); border-radius: 4px; padding: 0 5px; font-size: 0.68rem; }
+.uperr { color: var(--risk); }
+
+/* ---------- shared small bits ---------- */
+.tabtoolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.minibtn { border: 1px solid var(--line); background: var(--panel-2); color: var(--dim); font-family: var(--mono); font-size: 0.72rem; padding: 5px 9px; border-radius: 6px; white-space: nowrap; }
+.minibtn:hover:not(:disabled) { color: var(--amber); border-color: var(--amber); }
+.minibtn:disabled { opacity: 0.4; }
+.minibtn.danger:hover { color: var(--risk); border-color: var(--risk); }
+.exportrow { display: flex; align-items: center; gap: 6px; margin: 4px 0 12px; }
+.exlabel { font-family: var(--mono); font-size: 0.72rem; color: var(--faint); }
+
+/* ---------- simulate ---------- */
+.simbox { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: var(--panel); }
+.simbox.on { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber-soft); }
+.simhead { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: var(--text); margin-bottom: 10px; }
+.simhead code { color: var(--amber); font-size: 0.78rem; }
+.simctl { display: flex; align-items: center; gap: 10px; }
+.simctl input[type="range"] { flex: 1; accent-color: var(--amber); }
+.simval { font-family: var(--mono); font-weight: 700; font-size: 1.1rem; color: var(--amber); min-width: 54px; text-align: right; }
+.simbase { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); }
+.simverdict { margin-top: 10px; font-size: 0.82rem; color: var(--dim); line-height: 1.4; }
+.vfail { color: var(--risk); } .vok { color: var(--safe); } .vstale { color: var(--amber); } .vhint { color: var(--faint); }
+
+/* test status colouring */
+.test.s-fail { border-color: var(--risk); box-shadow: inset 3px 0 0 var(--risk); }
+.test.s-stale { border-color: var(--amber); box-shadow: inset 3px 0 0 var(--amber); }
+.test.s-pass { box-shadow: inset 3px 0 0 var(--safe); }
+.sbadge { margin-left: auto; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; }
+.sbadge.pass { color: var(--safe); border: 1px solid var(--safe); }
+.sbadge.fail { color: var(--risk); border: 1px solid var(--risk); }
+.sbadge.stale { color: var(--amber); border: 1px solid var(--amber); }
+.simrow { font-size: 0.78rem; color: var(--dim); margin: 6px 0; font-family: var(--mono); }
+.simrow code { color: var(--dim); } .simrow code.bad { color: var(--risk); font-weight: 700; }
+
+/* clickable spec bits */
+.loclink, .const, .cite { font: inherit; cursor: pointer; text-align: left; }
+.loclink { background: none; border: 0; color: var(--faint); font-family: var(--mono); font-size: 0.72rem; }
+.loclink:hover { color: var(--cyan); }
+.const { width: 100%; }
+.const:hover { filter: brightness(1.15); }
+.cite { width: 100%; display: block; }
+.cite:hover { border-color: var(--cyan); }
+.citations .cithead { margin-bottom: 2px; }
+
+/* ---------- audit ---------- */
+.approverfield { font-size: 0.78rem; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+.approverfield input { border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; width: 130px; }
+.auditlist { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.aentry { border: 1px solid var(--line-soft); border-left: 3px solid var(--cyan); border-radius: 8px; padding: 9px 11px; background: var(--panel); }
+.atop { display: flex; justify-content: space-between; align-items: baseline; }
+.ahash { font-family: var(--mono); font-size: 0.72rem; color: var(--cyan); }
+.atime { font-size: 0.7rem; color: var(--faint); }
+.atarget { font-size: 0.85rem; margin-top: 4px; } .atarget b { font-family: var(--mono); }
+.areq { font-size: 0.76rem; color: var(--dim); margin-top: 2px; }
+
+/* ---------- source peek ---------- */
+.peekwrap { position: fixed; inset: 0; background: rgba(4, 7, 12, 0.72); display: grid; place-items: center; z-index: 60; padding: 20px; backdrop-filter: blur(3px); }
+.peek { width: min(760px, 96vw); max-height: 80vh; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 80px -30px rgba(0,0,0,0.8); }
+.peekhead { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.peekfile { font-family: var(--mono); font-size: 0.82rem; color: var(--text); } .peekln { color: var(--cyan); }
+.peekclose { background: none; border: 0; color: var(--dim); font-size: 1rem; cursor: pointer; } .peekclose:hover { color: var(--text); }
+.peekcode { margin: 0; overflow: auto; font-family: var(--mono); font-size: 0.8rem; }
+.pl { display: flex; padding: 1px 12px; white-space: pre; }
+.pl.focus { background: var(--amber-soft); box-shadow: inset 3px 0 0 var(--amber); }
+.plnum { color: var(--faint); width: 42px; flex: 0 0 42px; text-align: right; padding-right: 12px; user-select: none; }
+.pltext { color: var(--text); }
+.pl:not(.focus) .pltext { color: var(--dim); }
+.peekempty { padding: 22px 18px; color: var(--dim); font-size: 0.9rem; line-height: 1.5; }
+
 @media (max-width: 900px) {
   .workspace { grid-template-columns: 1fr; }
   .graphpanel { border-right: 0; border-bottom: 1px solid var(--line); }
   .side { max-height: none; }
+  .topright { flex-wrap: wrap; }
 }

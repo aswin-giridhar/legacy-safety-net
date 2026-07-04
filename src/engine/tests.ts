@@ -8,6 +8,9 @@ export interface TestScenario {
   then: string;
   pins: string; // what behavior this locks in
   kind: "target" | "boundary" | "regression";
+  // simulation model: how this test reacts when the target constant is changed
+  simKind: "compute" | "zero" | "needs-run";
+  base?: number; // base amount for `compute` tests (expected = base * rate)
 }
 
 // Generate characterization ("golden master") test scaffolds: they capture
@@ -29,6 +32,8 @@ export function generateTests(repo: ParsedRepo, blast: BlastResult): TestScenari
       then: `LK-VAT-AMOUNT = ${(100 * parseFloat(rate)).toFixed(2)}`,
       pins: `the current ${pct}% standard rate — the exact value a change is likely to touch`,
       kind: "target",
+      simKind: "compute",
+      base: 100,
     });
     out.push({
       program: t,
@@ -38,6 +43,8 @@ export function generateTests(repo: ParsedRepo, blast: BlastResult): TestScenari
       then: `LK-VAT-AMOUNT = 0.00`,
       pins: `the boundary at zero — guards against divide/rounding regressions`,
       kind: "boundary",
+      simKind: "zero",
+      base: 0,
     });
     if (prog?.calls.some((c) => /FXRATE/i.test(c.text))) {
       out.push({
@@ -48,6 +55,7 @@ export function generateTests(repo: ParsedRepo, blast: BlastResult): TestScenari
         then: `LK-VAT-AMOUNT = round(FXRATE(USD→GBP, 100.00) * ${rate}, 2)`,
         pins: `the currency-normalisation path — a common source of silent drift`,
         kind: "boundary",
+        simKind: "needs-run",
       });
     }
   } else if (prog) {
@@ -59,6 +67,7 @@ export function generateTests(repo: ParsedRepo, blast: BlastResult): TestScenari
       then: `outputs and side-effects match the recorded baseline byte-for-byte`,
       pins: `whatever ${t} does today, before you touch it`,
       kind: "target",
+      simKind: "needs-run",
     });
   }
 
@@ -80,6 +89,7 @@ export function generateTests(repo: ParsedRepo, blast: BlastResult): TestScenari
         : `the produced output matches the baseline`,
       pins: `the downstream financial result — ${blast.reasons[id] ?? "high blast-radius"}`,
       kind: "regression",
+      simKind: "needs-run",
     });
   }
 

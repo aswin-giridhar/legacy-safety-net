@@ -1,16 +1,21 @@
-import { SAMPLE_FILES, SAMPLE_NAME } from "../sample/cbsa";
+import { SAMPLE_FILES, SAMPLE_NAME, type SourceFile } from "../sample/cbsa";
 import { parseRepo } from "./parser";
 import { blastRadius, resolveTarget } from "./graph";
 import { generateSpec, type Spec } from "./spec";
 import { generateTests, type TestScenario } from "./tests";
-import type { BlastResult, ParsedRepo } from "./types";
+import type { ParsedRepo, BlastResult } from "./types";
 
-let _repo: ParsedRepo | null = null;
+let _sample: ParsedRepo | null = null;
+
 export function getRepo(): ParsedRepo {
-  if (!_repo) _repo = parseRepo(SAMPLE_FILES);
-  return _repo;
+  if (!_sample) _sample = parseRepo(SAMPLE_FILES, SAMPLE_NAME);
+  return _sample;
 }
-export const repoName = SAMPLE_NAME;
+
+// Parse an arbitrary set of uploaded files into a fresh repo.
+export function parseFiles(files: SourceFile[], name: string): ParsedRepo {
+  return parseRepo(files, name);
+}
 
 export interface Analysis {
   target: string;
@@ -21,14 +26,16 @@ export interface Analysis {
   tests: TestScenario[];
 }
 
-export function analyzeRequest(request: string): Analysis {
-  const repo = getRepo();
+export function analyzeRequest(request: string, repo: ParsedRepo = getRepo()): Analysis {
   const { id, score, alts } = resolveTarget(repo, request);
-  return analyzeTarget(id, { score, alts });
+  return analyzeTarget(id, repo, { score, alts });
 }
 
-export function analyzeTarget(id: string, meta?: { score: number; alts: string[] }): Analysis {
-  const repo = getRepo();
+export function analyzeTarget(
+  id: string,
+  repo: ParsedRepo = getRepo(),
+  meta?: { score: number; alts: string[] },
+): Analysis {
   const blast = blastRadius(repo, id);
   return {
     target: id,

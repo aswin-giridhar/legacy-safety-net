@@ -42,8 +42,10 @@ export interface ParsedRepo {
   nodes: GraphNode[];
   edges: GraphEdge[];
   programs: Record<string, Program>;
+  sources: Record<string, string>; // file path -> raw content (for provenance peek)
   fileCount: number;
   loc: number;
+  name: string;
 }
 
 export interface BlastResult {
