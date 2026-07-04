@@ -187,7 +187,6 @@ def analyse(request):
 agent = Agent(
     name="legacy-safety-net",
     seed=os.environ.get("LSN_AGENT_SEED"),
-    mailbox=True,                 # connect via the Inspector link so ASI:One can reach it
     publish_agent_details=True,   # register agent details for ASI:One discovery/routing
 )
 
