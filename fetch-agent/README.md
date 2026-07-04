@@ -54,7 +54,9 @@ agent1qgn725myvj44pxv7ksy77a3j5e05ct4u39rf6kvcpuzgvx2clq7524wc0pa
 
 ## Demo prompts (paste into ASI:One)
 
-At **https://asi1.ai**, search **legacy safety net**, open the agent's chat, and paste any:
+Open your agent's **Chat with Agent** button on its Agentverse profile — it opens a dedicated
+ASI:One chat at `https://asi1.ai/ai/<your-agent-address>` that routes straight to your agent.
+(The general Luna chat / @mention search can lag until ASI:One re-indexes the metadata.) Paste any:
 
 ```
 What breaks if I change how VAT is calculated in the core banking system?

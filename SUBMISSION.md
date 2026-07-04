@@ -59,7 +59,7 @@ ASI:One agent, not a prototype.
 
 ## Final steps checklist
 
-- [ ] **ASI:One screenshot** — https://asi1.ai → search *legacy safety net* → paste a prompt below
+- [ ] **ASI:One shared chat URL + screenshot** — open the agent's **Chat with Agent** on Agentverse (direct `asi1.ai/ai/<address>` link, routes to your agent) → paste a prompt below → use **Share** for the public session URL
 - [ ] **Web demo recording** — 60–90s: open on the **Tests** tab, drag the rate slider to show the RED fail, peek a citation, approve → audit
 - [ ] Confirm the deck's closing slide links (demo, agent, GitHub)
 - [ ] Submit to the Conduct track + the Fetch/Superteam listing
